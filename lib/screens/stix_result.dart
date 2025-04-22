@@ -1,18 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:html';
+import 'dart:convert'; // ✅ ini yang lupa tadi
 import 'package:http/http.dart' as http;
-
 import 'home_screen.dart';
 
 class StixResult extends StatefulWidget {
   final List<Map<String, dynamic>> stixItems;
   final String collectionName;
+  final String username;
+  final String password;
 
   const StixResult({
     super.key,
     required this.stixItems,
     required this.collectionName,
+    required this.username,
+    required this.password,
   });
 
   @override
@@ -23,7 +27,6 @@ class _StixResultState extends State<StixResult> {
   final Map<int, bool> _expandedMap = {};
   final Map<int, bool> _hoverMap = {};
   bool _isDeleting = false;
-
   List<Map<String, dynamic>> _currentItems = [];
 
   @override
@@ -70,12 +73,17 @@ class _StixResultState extends State<StixResult> {
 
     setState(() => _isDeleting = true);
 
+    final url = Uri.parse('http://172.16.11.159:8000/delete_stix');
+
     try {
-      final url = Uri.parse('http://172.16.11.159:8000/delete_stix');
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
-        body: '{"id": $stixId}',
+        body: jsonEncode({
+          'id': stixId,
+          'username': widget.username,
+          'password': widget.password,
+        }),
       );
 
       if (response.statusCode == 200) {
@@ -99,14 +107,11 @@ class _StixResultState extends State<StixResult> {
     String highlightValue,
   ) {
     final spans = <TextSpan>[];
-
     final titleRegex = RegExp(r'(<indicator:Title>)(.*?)(</indicator:Title>)');
     final valueRegex = RegExp(
       r'(<(?:AddressObject:Address_Value|DomainNameObject:Value|URIObject:Value|cyboxCommon:Simple_Hash_Value)[^>]*>)(.*?)(</[^>]+>)',
     );
-
     int currentIndex = 0;
-
     final allMatches = [
       ...titleRegex.allMatches(xml),
       ...valueRegex.allMatches(xml),
@@ -116,11 +121,9 @@ class _StixResultState extends State<StixResult> {
       if (match.start > currentIndex) {
         spans.add(TextSpan(text: xml.substring(currentIndex, match.start)));
       }
-
       final openingTag = match.group(1) ?? '';
       final content = match.group(2) ?? '';
       final closingTag = match.group(3) ?? '';
-
       final shouldHighlight =
           content.trim() == highlightTitle.trim() ||
           content.trim() == highlightValue.trim();
@@ -139,7 +142,6 @@ class _StixResultState extends State<StixResult> {
         ),
       );
       spans.add(TextSpan(text: closingTag));
-
       currentIndex = match.end;
     }
 
@@ -155,10 +157,10 @@ class _StixResultState extends State<StixResult> {
     return Scaffold(
       backgroundColor: const Color(0xFF101820),
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        foregroundColor: Colors.white,
         title: Text('STIX in: ${widget.collectionName}'),
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.white,
+        elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.home),
@@ -177,249 +179,166 @@ class _StixResultState extends State<StixResult> {
               ? const Center(
                 child: CircularProgressIndicator(color: Colors.white),
               )
-              : Padding(
-                padding: const EdgeInsets.all(16.0),
-                child:
-                    _currentItems.isEmpty
-                        ? const Center(
-                          child: Text(
-                            'No STIX data to show.',
-                            style: TextStyle(color: Colors.white70),
-                          ),
-                        )
-                        : ListView.builder(
-                          itemCount: _currentItems.length,
-                          itemBuilder: (context, index) {
-                            final item = _currentItems[index];
-                            final isExpanded = _expandedMap[index] ?? false;
-                            final isHovered = _hoverMap[index] ?? false;
+              : _currentItems.isEmpty
+              ? const Center(
+                child: Text(
+                  'No STIX data to show.',
+                  style: TextStyle(color: Colors.white70),
+                ),
+              )
+              : ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: _currentItems.length,
+                itemBuilder: (context, index) {
+                  final item = _currentItems[index];
+                  final isExpanded = _expandedMap[index] ?? false;
+                  final isHovered = _hoverMap[index] ?? false;
 
-                            return MouseRegion(
-                              onEnter:
-                                  (_) =>
-                                      setState(() => _hoverMap[index] = true),
-                              onExit:
-                                  (_) =>
-                                      setState(() => _hoverMap[index] = false),
-                              child: InkWell(
-                                onTap: () {
-                                  setState(() {
-                                    _expandedMap[index] = !isExpanded;
-                                  });
-                                },
-                                borderRadius: BorderRadius.circular(16),
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 250),
-                                  margin: const EdgeInsets.only(bottom: 20),
-                                  padding: const EdgeInsets.all(20),
-                                  decoration: BoxDecoration(
-                                    color:
-                                        isExpanded
-                                            ? Colors.deepPurple.shade900
-                                                .withOpacity(0.2)
-                                            : const Color(0xFF1C1F26),
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(
-                                      color:
-                                          isHovered
-                                              ? Colors.deepPurpleAccent
-                                                  .withOpacity(0.6)
-                                              : Colors.grey.shade800,
-                                      width: isHovered ? 1.4 : 1.0,
+                  return MouseRegion(
+                    onEnter: (_) => setState(() => _hoverMap[index] = true),
+                    onExit: (_) => setState(() => _hoverMap[index] = false),
+                    child: InkWell(
+                      onTap: () {
+                        setState(() {
+                          _expandedMap[index] = !isExpanded;
+                        });
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 250),
+                        margin: const EdgeInsets.only(bottom: 20),
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color:
+                              isExpanded
+                                  ? Colors.deepPurple.shade900.withOpacity(0.2)
+                                  : const Color(0xFF1C1F26),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color:
+                                isHovered
+                                    ? Colors.deepPurpleAccent.withOpacity(0.6)
+                                    : Colors.grey.shade800,
+                            width: isHovered ? 1.4 : 1.0,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item['title'] ?? 'No Title',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              item['hash'] ?? '',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey.shade400,
+                              ),
+                            ),
+                            if (isExpanded) ...[
+                              const Divider(height: 24, color: Colors.white24),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text(
+                                    'Raw STIX',
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontWeight: FontWeight.w600,
                                     ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color:
-                                            isHovered
-                                                ? Colors.deepPurple.withOpacity(
-                                                  0.3,
-                                                )
-                                                : Colors.black.withOpacity(
-                                                  0.15,
-                                                ),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 4),
+                                  ),
+                                  Row(
+                                    children: [
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.copy,
+                                          color: Colors.white70,
+                                          size: 18,
+                                        ),
+                                        onPressed: () {
+                                          Clipboard.setData(
+                                            ClipboardData(
+                                              text: item['raw'] ?? '',
+                                            ),
+                                          );
+                                          _showSnackbar('Copied to clipboard!');
+                                        },
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.download,
+                                          color: Colors.white70,
+                                          size: 18,
+                                        ),
+                                        onPressed: () {
+                                          final now =
+                                              DateTime.now()
+                                                  .millisecondsSinceEpoch;
+                                          final blob = Blob([
+                                            item['raw'] ?? '<empty />',
+                                          ], 'application/xml');
+                                          final url =
+                                              Url.createObjectUrlFromBlob(blob);
+                                          AnchorElement(href: url)
+                                            ..setAttribute(
+                                              'download',
+                                              'stix_$now.xml',
+                                            )
+                                            ..click();
+                                          Url.revokeObjectUrl(url);
+                                        },
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.delete,
+                                          color: Colors.redAccent,
+                                          size: 18,
+                                        ),
+                                        onPressed:
+                                            () =>
+                                                _deleteStix(item['id'], index),
                                       ),
                                     ],
                                   ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        item['title'] ?? 'No Title',
-                                        style: const TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Text(
-                                        item['hash'] ?? '',
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          color: Colors.grey.shade400,
-                                        ),
-                                      ),
-                                      if (isExpanded) ...[
-                                        const Divider(
-                                          height: 24,
-                                          color: Colors.white24,
-                                        ),
-                                        Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            const Text(
-                                              'Raw STIX',
-                                              style: TextStyle(
-                                                color: Colors.white70,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                            Row(
-                                              children: [
-                                                TextButton.icon(
-                                                  onPressed: () {
-                                                    Clipboard.setData(
-                                                      ClipboardData(
-                                                        text: item['raw'] ?? '',
-                                                      ),
-                                                    );
-                                                    _showSnackbar(
-                                                      'Copied to clipboard!',
-                                                    );
-                                                  },
-                                                  icon: const Icon(
-                                                    Icons.copy,
-                                                    size: 16,
-                                                    color: Colors.white70,
-                                                  ),
-                                                  label: const Text(
-                                                    'Copy',
-                                                    style: TextStyle(
-                                                      color: Colors.white70,
-                                                    ),
-                                                  ),
-                                                  style: TextButton.styleFrom(
-                                                    padding: EdgeInsets.zero,
-                                                    minimumSize: const Size(
-                                                      40,
-                                                      30,
-                                                    ),
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 8),
-                                                TextButton.icon(
-                                                  onPressed: () async {
-                                                    final now =
-                                                        DateTime.now()
-                                                            .millisecondsSinceEpoch;
-                                                    final fileName =
-                                                        'stix_$now.xml';
-                                                    final content =
-                                                        item['raw'] ??
-                                                        '<empty />';
-                                                    final blob = Blob([
-                                                      content,
-                                                    ], 'application/xml');
-                                                    final url =
-                                                        Url.createObjectUrlFromBlob(
-                                                          blob,
-                                                        );
-                                                    AnchorElement(href: url)
-                                                      ..setAttribute(
-                                                        'download',
-                                                        fileName,
-                                                      )
-                                                      ..click();
-                                                    Url.revokeObjectUrl(url);
-                                                  },
-                                                  icon: const Icon(
-                                                    Icons.download,
-                                                    size: 16,
-                                                    color: Colors.white70,
-                                                  ),
-                                                  label: const Text(
-                                                    'Download',
-                                                    style: TextStyle(
-                                                      color: Colors.white70,
-                                                    ),
-                                                  ),
-                                                  style: TextButton.styleFrom(
-                                                    padding: EdgeInsets.zero,
-                                                    minimumSize: const Size(
-                                                      40,
-                                                      30,
-                                                    ),
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 8),
-                                                TextButton.icon(
-                                                  onPressed: () {
-                                                    final id = item['id'];
-                                                    if (id != null) {
-                                                      _deleteStix(id, index);
-                                                    }
-                                                  },
-                                                  icon: const Icon(
-                                                    Icons.delete,
-                                                    size: 16,
-                                                    color: Colors.redAccent,
-                                                  ),
-                                                  label: const Text(
-                                                    'Delete',
-                                                    style: TextStyle(
-                                                      color: Colors.redAccent,
-                                                    ),
-                                                  ),
-                                                  style: TextButton.styleFrom(
-                                                    padding: EdgeInsets.zero,
-                                                    minimumSize: const Size(
-                                                      40,
-                                                      30,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Container(
-                                          width: double.infinity,
-                                          padding: const EdgeInsets.all(12),
-                                          decoration: BoxDecoration(
-                                            color: Colors.deepPurple.shade900
-                                                .withOpacity(0.2),
-                                            borderRadius: BorderRadius.circular(
-                                              12,
-                                            ),
-                                          ),
-                                          child: SelectableText.rich(
-                                            TextSpan(
-                                              style: const TextStyle(
-                                                fontSize: 13,
-                                                color: Colors.white70,
-                                                fontFamily: 'monospace',
-                                              ),
-                                              children: _highlightSTIX(
-                                                item['raw'] ?? '<empty />',
-                                                item['title'] ?? '',
-                                                item['hash'] ?? '',
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ],
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.deepPurple.shade900.withOpacity(
+                                    0.2,
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: SelectableText.rich(
+                                  TextSpan(
+                                    style: const TextStyle(
+                                      fontFamily: 'monospace',
+                                      fontSize: 13,
+                                      color: Colors.white70,
+                                    ),
+                                    children: _highlightSTIX(
+                                      item['raw'] ?? '',
+                                      item['title'] ?? '',
+                                      item['hash'] ?? '',
+                                    ),
                                   ),
                                 ),
                               ),
-                            );
-                          },
+                            ],
+                          ],
                         ),
+                      ),
+                    ),
+                  );
+                },
               ),
     );
   }

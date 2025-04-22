@@ -101,6 +101,8 @@ class _PollingScreenState extends State<PollingScreen> {
                   (_) => StixResult(
                     stixItems: parsedList,
                     collectionName: collection,
+                    username: username,
+                    password: password,
                   ),
             ),
           );
