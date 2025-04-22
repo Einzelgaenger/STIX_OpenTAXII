@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-
 import 'home_screen.dart';
 import 'stix_result.dart';
 
@@ -39,88 +38,136 @@ class _PollingScreenState extends State<PollingScreen> {
     final collection = _collectionController.text.trim();
     final path = _pathController.text.trim();
 
-    if (username.isEmpty) return _showErrorSnackbar("Username is required.");
-    if (password.isEmpty) return _showErrorSnackbar("Password is required.");
-    if (collection.isEmpty)
-      return _showErrorSnackbar("Collection Name is required.");
-    if (path.isEmpty) return _showErrorSnackbar("Path is required.");
+    if (username.isEmpty ||
+        password.isEmpty ||
+        collection.isEmpty ||
+        path.isEmpty) {
+      _showErrorSnackbar("All fields are required.");
+      return;
+    }
 
     setState(() => _isLoading = true);
 
-    final url = Uri.parse('http://172.16.11.159:8000/poll');
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'username': username,
-        'password': password,
-        'collection': collection,
-        'path': path,
-      }),
-    );
+    try {
+      // Step 1: Authentication Check
+      final authUrl = Uri.parse(
+        'http://172.16.11.159:8000/poll_stix_authenticate',
+      );
+      final authResponse = await http.post(
+        authUrl,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'username': username,
+          'password': password,
+          'collection': collection,
+          'path': path,
+        }),
+      );
 
-    setState(() => _isLoading = false);
-
-    if (!mounted) return;
-
-    if (response.statusCode == 200) {
-      try {
-        final decoded = jsonDecode(response.body);
-        final raw = decoded['stdout'] ?? '';
-        final parsedList = _splitIndicatorsAsPackages(raw).reversed.toList();
-
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => StixResult(stixItems: parsedList)),
-        );
-      } catch (e) {
-        _showErrorSnackbar("Parsing failed: $e");
+      if (authResponse.statusCode != 200) {
+        // Autentikasi gagal
+        try {
+          final errorBody = jsonDecode(authResponse.body);
+          _showErrorSnackbar(errorBody['error'] ?? 'Authentication failed.');
+        } catch (_) {
+          _showErrorSnackbar('Authentication failed with unknown error.');
+        }
+        if (mounted) setState(() => _isLoading = false);
+        return;
       }
-    } else {
-      _showErrorSnackbar("Polling Error: ${response.body}");
+
+      // Step 2: Fetch STIX list
+      final listUrl = Uri.parse('http://172.16.11.159:8000/list_stix');
+      final listResponse = await http.post(
+        listUrl,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'collection': collection,
+          'username': username,
+          'password': password,
+        }),
+      );
+
+      if (listResponse.statusCode == 200) {
+        try {
+          final List<dynamic> decoded = jsonDecode(listResponse.body);
+          final List<Map<String, dynamic>> parsedList =
+              decoded.cast<Map<String, dynamic>>();
+
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder:
+                  (_) => StixResult(
+                    stixItems: parsedList,
+                    collectionName: collection,
+                  ),
+            ),
+          );
+        } catch (e) {
+          _showErrorSnackbar('Failed to parse server response.');
+        }
+      } else {
+        try {
+          final errorBody = jsonDecode(listResponse.body);
+          _showErrorSnackbar(errorBody['error'] ?? 'Failed to load STIX.');
+        } catch (_) {
+          _showErrorSnackbar('Failed to load STIX: Unknown server error.');
+        }
+      }
+    } catch (e) {
+      _showErrorSnackbar('Unexpected Error: $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  List<Map<String, dynamic>> _splitIndicatorsAsPackages(String xml) {
-    final packageRegex = RegExp(
-      r'(<stix:STIX_Package\b.*?>.*?<\/stix:STIX_Package>)',
-      dotAll: true,
-    );
-    final indicatorRegex = RegExp(
-      r'(<stix:Indicator\b[^>]*>.*?<\/stix:Indicator>)',
-      dotAll: true,
-    );
-    final titleRegex = RegExp(r'<indicator:Title>(.*?)<\/indicator:Title>');
-    final valueRegex = RegExp(
-      r'<(AddressObject:Address_Value|DomainNameObject:Value|URIObject:Value|cyboxCommon:Simple_Hash_Value)[^>]*>(.*?)<\/\1>',
-    );
+  void _deleteCollection() async {
+    final collection = _collectionController.text.trim();
+    final username = _usernameController.text.trim();
+    final password = _passwordController.text.trim();
 
-    final result = <Map<String, dynamic>>[];
-
-    final packages = packageRegex.allMatches(xml);
-
-    for (final match in packages) {
-      final packageXml = match.group(0)!;
-
-      // Temukan semua indikator dalam paket ini
-      final indicators = indicatorRegex.allMatches(packageXml);
-      for (final indicatorMatch in indicators) {
-        final indicatorXml = indicatorMatch.group(0)!;
-        final title =
-            titleRegex.firstMatch(indicatorXml)?.group(1)?.trim() ?? 'Unknown';
-
-        final value =
-            valueRegex.firstMatch(indicatorXml)?.group(2)?.trim() ?? 'No data';
-
-        result.add({
-          'title': title,
-          'hash': value,
-          'raw': packageXml, // hanya STIX Package ini
-        });
-      }
+    if (collection.isEmpty || username.isEmpty || password.isEmpty) {
+      _showErrorSnackbar(
+        "Collection Name, Username, and Password are required to delete.",
+      );
+      return;
     }
 
-    return result;
+    try {
+      final url = Uri.parse('http://172.16.11.159:8000/delete_collection');
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'collection': collection,
+          'username': username,
+          'password': password,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Collection deleted successfully.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        try {
+          final errorBody = jsonDecode(response.body);
+          _showErrorSnackbar(
+            errorBody['error'] ?? 'Failed to delete collection.',
+          );
+        } catch (_) {
+          _showErrorSnackbar(
+            'Failed to delete collection: Unknown server error.',
+          );
+        }
+      }
+    } catch (e) {
+      _showErrorSnackbar("Unexpected Error: $e");
+    }
   }
 
   Widget _buildInput(
@@ -146,12 +193,6 @@ class _PollingScreenState extends State<PollingScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF101820),
-      // appBar: AppBar(
-      //   backgroundColor: Colors.transparent,
-      //   elevation: 0,
-      //   foregroundColor: Colors.white,
-      //   title: const Text('Poll STIX from Server'),
-      // ),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -170,7 +211,6 @@ class _PollingScreenState extends State<PollingScreen> {
           ),
         ],
       ),
-
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
@@ -187,22 +227,41 @@ class _PollingScreenState extends State<PollingScreen> {
                 const SizedBox(height: 12),
                 _buildInput('Custom Path (optional) *', _pathController),
                 const SizedBox(height: 24),
-                _isLoading
-                    ? const Center(
-                      child: CircularProgressIndicator(color: Colors.white),
-                    )
-                    : ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        backgroundColor: Colors.blueAccent,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                if (_isLoading)
+                  const Center(
+                    child: CircularProgressIndicator(color: Colors.white),
+                  )
+                else ...[
+                  ElevatedButton(
+                    onPressed: _pollSTIX,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blueAccent,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      onPressed: _pollSTIX,
-                      child: const Text('Poll', style: TextStyle(fontSize: 16)),
                     ),
+                    child: const Text(
+                      'Poll STIX',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton(
+                    onPressed: _deleteCollection,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.redAccent,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'Delete Collection',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
