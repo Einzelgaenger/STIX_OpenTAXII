@@ -22,15 +22,106 @@ class _SendStixScreenState extends State<SendStixScreen> {
 
   bool _isLoading = false;
 
-  void _showErrorSnackbar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.redAccent,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
+  void _showCustomDialog(
+    String title,
+    String rawContent, {
+    bool isError = false,
+  }) {
+    String message = _simplifyMessage(rawContent, isError);
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            width: 320,
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors:
+                    isError
+                        ? [Colors.red.shade400, Colors.red.shade700]
+                        : [Colors.blue.shade400, Colors.blue.shade700],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 10,
+                  offset: Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircleAvatar(
+                  radius: 30,
+                  backgroundColor: Colors.white,
+                  child: Icon(
+                    isError ? Icons.close : Icons.check,
+                    color: isError ? Colors.red : Colors.blue,
+                    size: 40,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  isError ? "Failed !" : "Success !",
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.white70, fontSize: 16),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  onPressed: () => Navigator.pop(context),
+                  icon: Icon(isError ? Icons.refresh : Icons.arrow_forward),
+                  label: Text(isError ? "TRY AGAIN" : "CONTINUE"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: isError ? Colors.red : Colors.blue,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 24,
+                    ),
+                    textStyle: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
+  }
+
+  String _simplifyMessage(String rawContent, bool isError) {
+    if (!isError) return "STIX message sent successfully!";
+
+    if (rawContent.contains("Unauthorized access")) {
+      return "Unauthorized access!";
+    } else if (rawContent.contains("NOT_FOUND") ||
+        rawContent.contains("Collection collectio") ||
+        rawContent.contains("collection not found")) {
+      return "Collection not found!";
+    } else if (rawContent.contains("ERROR")) {
+      return "Server error occurred!";
+    }
+
+    return "An unexpected error occurred!";
   }
 
   void _sendStix() async {
@@ -40,12 +131,28 @@ class _SendStixScreenState extends State<SendStixScreen> {
     final username = _usernameController.text.trim();
     final password = _passwordController.text.trim();
 
-    if (stix.isEmpty) return _showErrorSnackbar("STIX Message is required.");
-    if (url.isEmpty) return _showErrorSnackbar("Target URL is required.");
+    if (stix.isEmpty)
+      return _showCustomDialog(
+        "Error",
+        "STIX Message is required.",
+        isError: true,
+      );
+    if (url.isEmpty)
+      return _showCustomDialog(
+        "Error",
+        "Target URL is required.",
+        isError: true,
+      );
     if (collection.isEmpty)
-      return _showErrorSnackbar("Collection Name is required.");
-    if (username.isEmpty) return _showErrorSnackbar("Username is required.");
-    if (password.isEmpty) return _showErrorSnackbar("Password is required.");
+      return _showCustomDialog(
+        "Error",
+        "Collection Name is required.",
+        isError: true,
+      );
+    if (username.isEmpty)
+      return _showCustomDialog("Error", "Username is required.", isError: true);
+    if (password.isEmpty)
+      return _showCustomDialog("Error", "Password is required.", isError: true);
 
     setState(() => _isLoading = true);
 
@@ -66,63 +173,17 @@ class _SendStixScreenState extends State<SendStixScreen> {
 
       if (!mounted) return;
 
-      if (response.statusCode == 200 || response.statusCode == 202) {
-        final responseData = response.body.toLowerCase();
+      final bodyLower = response.body.toLowerCase();
+      final isError = response.statusCode != 200 || bodyLower.contains('error');
 
-        if (responseData.contains("error")) {
-          // Kalau body-nya ada kata 'error', berarti gagal
-          showDialog(
-            context: context,
-            builder:
-                (_) => AlertDialog(
-                  title: const Text("Error"),
-                  content: Text("Failed to send STIX:\n${response.body}"),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text("OK"),
-                    ),
-                  ],
-                ),
-          );
-        } else {
-          // Kalau aman, baru success
-          showDialog(
-            context: context,
-            builder:
-                (_) => AlertDialog(
-                  title: const Text("Success"),
-                  content: const Text("STIX message sent successfully."),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text("OK"),
-                    ),
-                  ],
-                ),
-          );
-        }
-      } else {
-        showDialog(
-          context: context,
-          builder:
-              (_) => AlertDialog(
-                title: const Text("Error"),
-                content: Text(
-                  "Failed to send STIX:\n${response.statusCode}\n${response.body}",
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text("OK"),
-                  ),
-                ],
-              ),
-        );
-      }
+      _showCustomDialog(
+        isError ? "Error" : "Success",
+        response.body,
+        isError: isError,
+      );
     } catch (e) {
       setState(() => _isLoading = false);
-      _showErrorSnackbar("Error: $e");
+      _showCustomDialog("Error", "Error: $e", isError: true);
     }
   }
 

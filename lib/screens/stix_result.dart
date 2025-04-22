@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:html';
-import 'dart:convert'; // ✅ ini yang lupa tadi
+import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'home_screen.dart';
 
@@ -26,13 +26,46 @@ class StixResult extends StatefulWidget {
 class _StixResultState extends State<StixResult> {
   final Map<int, bool> _expandedMap = {};
   final Map<int, bool> _hoverMap = {};
+  final TextEditingController _searchController = TextEditingController();
   bool _isDeleting = false;
+  bool _isDescending = true;
   List<Map<String, dynamic>> _currentItems = [];
+  List<Map<String, dynamic>> _filteredItems = [];
+  int currentPage = 1;
+  final int itemsPerPage = 10;
 
   @override
   void initState() {
     super.initState();
-    _currentItems = List.from(widget.stixItems);
+    _currentItems = List.from(widget.stixItems.reversed); // default terbaru
+    _filteredItems = List.from(_currentItems);
+    _searchController.addListener(_applyFilter);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _applyFilter() {
+    final query = _searchController.text.toLowerCase();
+    setState(() {
+      _filteredItems =
+          _currentItems.where((item) {
+            final title = item['title']?.toLowerCase() ?? '';
+            return title.contains(query);
+          }).toList();
+      currentPage = 1; // Reset ke page 1 setelah search
+    });
+  }
+
+  void _toggleSortOrder() {
+    setState(() {
+      _isDescending = !_isDescending;
+      _currentItems = _currentItems.reversed.toList();
+      _applyFilter();
+    });
   }
 
   void _showSnackbar(String message, {bool error = false}) {
@@ -88,7 +121,8 @@ class _StixResultState extends State<StixResult> {
 
       if (response.statusCode == 200) {
         setState(() {
-          _currentItems.removeAt(index);
+          _currentItems.removeWhere((item) => item['id'] == stixId);
+          _applyFilter();
         });
         _showSnackbar('STIX deleted successfully.');
       } else {
@@ -152,8 +186,21 @@ class _StixResultState extends State<StixResult> {
     return spans;
   }
 
+  List<Map<String, dynamic>> _paginatedItems() {
+    final startIndex = (currentPage - 1) * itemsPerPage;
+    final endIndex =
+        (startIndex + itemsPerPage) > _filteredItems.length
+            ? _filteredItems.length
+            : startIndex + itemsPerPage;
+    return _filteredItems.sublist(startIndex, endIndex);
+  }
+
+  int get totalPages => (_filteredItems.length / itemsPerPage).ceil();
+
   @override
   Widget build(BuildContext context) {
+    final paginated = _paginatedItems();
+
     return Scaffold(
       backgroundColor: const Color(0xFF101820),
       appBar: AppBar(
@@ -186,160 +233,270 @@ class _StixResultState extends State<StixResult> {
                   style: TextStyle(color: Colors.white70),
                 ),
               )
-              : ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: _currentItems.length,
-                itemBuilder: (context, index) {
-                  final item = _currentItems[index];
-                  final isExpanded = _expandedMap[index] ?? false;
-                  final isHovered = _hoverMap[index] ?? false;
-
-                  return MouseRegion(
-                    onEnter: (_) => setState(() => _hoverMap[index] = true),
-                    onExit: (_) => setState(() => _hoverMap[index] = false),
-                    child: InkWell(
-                      onTap: () {
-                        setState(() {
-                          _expandedMap[index] = !isExpanded;
-                        });
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 250),
-                        margin: const EdgeInsets.only(bottom: 20),
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color:
-                              isExpanded
-                                  ? Colors.deepPurple.shade900.withOpacity(0.2)
-                                  : const Color(0xFF1C1F26),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color:
-                                isHovered
-                                    ? Colors.deepPurpleAccent.withOpacity(0.6)
-                                    : Colors.grey.shade800,
-                            width: isHovered ? 1.4 : 1.0,
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+              : Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
                           children: [
-                            Text(
-                              item['title'] ?? 'No Title',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              item['hash'] ?? '',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey.shade400,
-                              ),
-                            ),
-                            if (isExpanded) ...[
-                              const Divider(height: 24, color: Colors.white24),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  const Text(
-                                    'Raw STIX',
-                                    style: TextStyle(
-                                      color: Colors.white70,
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                            Expanded(
+                              child: TextField(
+                                controller: _searchController,
+                                style: const TextStyle(color: Colors.white),
+                                decoration: InputDecoration(
+                                  hintText: 'Search by Title...',
+                                  hintStyle: const TextStyle(
+                                    color: Colors.white54,
                                   ),
-                                  Row(
-                                    children: [
-                                      IconButton(
-                                        icon: const Icon(
-                                          Icons.copy,
-                                          color: Colors.white70,
-                                          size: 18,
-                                        ),
-                                        onPressed: () {
-                                          Clipboard.setData(
-                                            ClipboardData(
-                                              text: item['raw'] ?? '',
-                                            ),
-                                          );
-                                          _showSnackbar('Copied to clipboard!');
-                                        },
-                                      ),
-                                      IconButton(
-                                        icon: const Icon(
-                                          Icons.download,
-                                          color: Colors.white70,
-                                          size: 18,
-                                        ),
-                                        onPressed: () {
-                                          final now =
-                                              DateTime.now()
-                                                  .millisecondsSinceEpoch;
-                                          final blob = Blob([
-                                            item['raw'] ?? '<empty />',
-                                          ], 'application/xml');
-                                          final url =
-                                              Url.createObjectUrlFromBlob(blob);
-                                          AnchorElement(href: url)
-                                            ..setAttribute(
-                                              'download',
-                                              'stix_$now.xml',
-                                            )
-                                            ..click();
-                                          Url.revokeObjectUrl(url);
-                                        },
-                                      ),
-                                      IconButton(
-                                        icon: const Icon(
-                                          Icons.delete,
-                                          color: Colors.redAccent,
-                                          size: 18,
-                                        ),
-                                        onPressed:
-                                            () =>
-                                                _deleteStix(item['id'], index),
-                                      ),
-                                    ],
+                                  filled: true,
+                                  fillColor: Colors.grey.shade900,
+                                  prefixIcon: const Icon(
+                                    Icons.search,
+                                    color: Colors.white54,
                                   ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: Colors.deepPurple.shade900.withOpacity(
-                                    0.2,
-                                  ),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: SelectableText.rich(
-                                  TextSpan(
-                                    style: const TextStyle(
-                                      fontFamily: 'monospace',
-                                      fontSize: 13,
-                                      color: Colors.white70,
-                                    ),
-                                    children: _highlightSTIX(
-                                      item['raw'] ?? '',
-                                      item['title'] ?? '',
-                                      item['hash'] ?? '',
-                                    ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
                                   ),
                                 ),
                               ),
-                            ],
+                            ),
+                            const SizedBox(width: 12),
+                            DropdownButton<String>(
+                              value: _isDescending ? 'Newest' : 'Oldest',
+                              dropdownColor: Colors.grey.shade900,
+                              borderRadius: BorderRadius.circular(12),
+                              style: const TextStyle(color: Colors.white),
+                              underline: Container(height: 0),
+                              items: const [
+                                DropdownMenuItem(
+                                  value: 'Newest',
+                                  child: Text('Newest First'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'Oldest',
+                                  child: Text('Oldest First'),
+                                ),
+                              ],
+                              onChanged: (value) {
+                                if (value != null) {
+                                  _toggleSortOrder();
+                                }
+                              },
+                            ),
                           ],
                         ),
-                      ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Total STIX: ${_filteredItems.length} | Page $currentPage of $totalPages',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
-                  );
-                },
+                  ),
+                  Expanded(
+                    child: ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: paginated.length,
+                      itemBuilder: (context, index) {
+                        final item = paginated[index];
+                        final isExpanded = _expandedMap[index] ?? false;
+                        final isHovered = _hoverMap[index] ?? false;
+
+                        return _buildStixCard(
+                          item,
+                          index,
+                          isExpanded,
+                          isHovered,
+                        );
+                      },
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        ElevatedButton(
+                          onPressed:
+                              currentPage > 1
+                                  ? () {
+                                    setState(() {
+                                      currentPage--;
+                                    });
+                                  }
+                                  : null,
+                          child: const Text('Previous'),
+                        ),
+                        ElevatedButton(
+                          onPressed:
+                              currentPage < totalPages
+                                  ? () {
+                                    setState(() {
+                                      currentPage++;
+                                    });
+                                  }
+                                  : null,
+                          child: const Text('Next'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
+    );
+  }
+
+  Widget _buildStixCard(
+    Map<String, dynamic> item,
+    int index,
+    bool isExpanded,
+    bool isHovered,
+  ) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hoverMap[index] = true),
+      onExit: (_) => setState(() => _hoverMap[index] = false),
+      child: InkWell(
+        onTap: () {
+          setState(() {
+            _expandedMap[index] = !isExpanded;
+          });
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          margin: const EdgeInsets.only(bottom: 20),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color:
+                isExpanded
+                    ? Colors.deepPurple.shade900.withOpacity(0.2)
+                    : const Color(0xFF1C1F26),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color:
+                  isHovered
+                      ? Colors.deepPurpleAccent.withOpacity(0.6)
+                      : Colors.grey.shade800,
+              width: isHovered ? 1.4 : 1.0,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                item['title'] ?? 'No Title',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                item['hash'] ?? '',
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade400),
+              ),
+              if (isExpanded) ...[
+                const Divider(height: 24, color: Colors.white24),
+                _buildExpandedContent(item),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExpandedContent(Map<String, dynamic> item) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Raw STIX',
+              style: TextStyle(
+                color: Colors.white70,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.copy, color: Colors.white70, size: 18),
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: item['raw'] ?? ''));
+                    _showSnackbar('Copied to clipboard!');
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(
+                    Icons.download,
+                    color: Colors.white70,
+                    size: 18,
+                  ),
+                  onPressed: () {
+                    final now = DateTime.now().millisecondsSinceEpoch;
+                    final blob = Blob([
+                      item['raw'] ?? '<empty />',
+                    ], 'application/xml');
+                    final url = Url.createObjectUrlFromBlob(blob);
+                    AnchorElement(href: url)
+                      ..setAttribute('download', 'stix_$now.xml')
+                      ..click();
+                    Url.revokeObjectUrl(url);
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(
+                    Icons.delete,
+                    color: Colors.redAccent,
+                    size: 18,
+                  ),
+                  onPressed:
+                      () =>
+                          _deleteStix(item['id'], _filteredItems.indexOf(item)),
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.deepPurple.shade900.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: SelectableText.rich(
+            TextSpan(
+              style: const TextStyle(
+                fontFamily: 'monospace',
+                fontSize: 13,
+                color: Colors.white70,
+              ),
+              children: _highlightSTIX(
+                item['raw'] ?? '',
+                item['title'] ?? '',
+                item['hash'] ?? '',
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
