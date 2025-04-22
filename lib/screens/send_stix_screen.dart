@@ -49,54 +49,80 @@ class _SendStixScreenState extends State<SendStixScreen> {
 
     setState(() => _isLoading = true);
 
-    final response = await http.post(
-      Uri.parse('http://172.16.11.159:8000/push'),
-      headers: {
-        'Content-Type': 'application/xml',
-        'X-Username': username,
-        'X-Password': password,
-        'X-Collection': collection,
-        'X-Path': url,
-      },
-      body: stix,
-    );
-
-    setState(() => _isLoading = false);
-
-    if (!mounted) return;
-
-    if (response.statusCode == 200 || response.statusCode == 202) {
-      showDialog(
-        context: context,
-        builder:
-            (_) => AlertDialog(
-              title: const Text("Success"),
-              content: const Text("STIX message sent successfully."),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text("OK"),
-                ),
-              ],
-            ),
+    try {
+      final response = await http.post(
+        Uri.parse('http://172.16.11.159:8000/push'),
+        headers: {
+          'Content-Type': 'application/xml',
+          'X-Username': username,
+          'X-Password': password,
+          'X-Collection': collection,
+          'X-Path': url,
+        },
+        body: stix,
       );
-    } else {
-      showDialog(
-        context: context,
-        builder:
-            (_) => AlertDialog(
-              title: const Text("Error"),
-              content: Text(
-                "Failed to send STIX:\n${response.statusCode}\n${response.body}",
+
+      setState(() => _isLoading = false);
+
+      if (!mounted) return;
+
+      if (response.statusCode == 200 || response.statusCode == 202) {
+        final responseData = response.body.toLowerCase();
+
+        if (responseData.contains("error")) {
+          // Kalau body-nya ada kata 'error', berarti gagal
+          showDialog(
+            context: context,
+            builder:
+                (_) => AlertDialog(
+                  title: const Text("Error"),
+                  content: Text("Failed to send STIX:\n${response.body}"),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text("OK"),
+                    ),
+                  ],
+                ),
+          );
+        } else {
+          // Kalau aman, baru success
+          showDialog(
+            context: context,
+            builder:
+                (_) => AlertDialog(
+                  title: const Text("Success"),
+                  content: const Text("STIX message sent successfully."),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text("OK"),
+                    ),
+                  ],
+                ),
+          );
+        }
+      } else {
+        showDialog(
+          context: context,
+          builder:
+              (_) => AlertDialog(
+                title: const Text("Error"),
+                content: Text(
+                  "Failed to send STIX:\n${response.statusCode}\n${response.body}",
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text("OK"),
+                  ),
+                ],
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text("OK"),
-                ),
-              ],
-            ),
-      );
+        );
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      _showErrorSnackbar("Error: $e");
     }
   }
 
