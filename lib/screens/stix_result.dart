@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:html';
+import 'package:google_fonts/google_fonts.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../widgets/custom_navigation_buttons.dart';
 import 'home_screen.dart';
 
 class StixResult extends StatefulWidget {
@@ -56,7 +58,7 @@ class _StixResultState extends State<StixResult> {
             final title = item['title']?.toLowerCase() ?? '';
             return title.contains(query);
           }).toList();
-      currentPage = 1; // Reset ke page 1 setelah search
+      currentPage = 1;
     });
   }
 
@@ -204,7 +206,6 @@ class _StixResultState extends State<StixResult> {
     return Scaffold(
       backgroundColor: const Color(0xFF101820),
       appBar: AppBar(
-        title: Text('STIX in: ${widget.collectionName}'),
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
         elevation: 0,
@@ -243,30 +244,43 @@ class _StixResultState extends State<StixResult> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _searchController,
-                                style: const TextStyle(color: Colors.white),
-                                decoration: InputDecoration(
-                                  hintText: 'Search by Title...',
-                                  hintStyle: const TextStyle(
-                                    color: Colors.white54,
-                                  ),
-                                  filled: true,
-                                  fillColor: Colors.grey.shade900,
-                                  prefixIcon: const Icon(
-                                    Icons.search,
-                                    color: Colors.white54,
-                                  ),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                              ),
+                        const SizedBox(height: 10),
+                        Text(
+                          widget.collectionName,
+                          style: GoogleFonts.lato(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+
+                        const SizedBox(height: 20),
+                        TextField(
+                          controller: _searchController,
+                          style: const TextStyle(color: Colors.white),
+                          decoration: InputDecoration(
+                            hintText: 'Search by Title...',
+                            hintStyle: const TextStyle(color: Colors.white54),
+                            filled: true,
+                            fillColor: Colors.grey.shade900,
+                            prefixIcon: const Icon(
+                              Icons.search,
+                              color: Colors.white54,
                             ),
-                            const SizedBox(width: 12),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            SelectableText(
+                              'Showing ${(currentPage - 1) * itemsPerPage + 1} - ${((currentPage) * itemsPerPage).clamp(1, _filteredItems.length)} of ${_filteredItems.length} result',
+                              style: const TextStyle(color: Colors.white70),
+                            ),
                             DropdownButton<String>(
                               value: _isDescending ? 'Newest' : 'Oldest',
                               dropdownColor: Colors.grey.shade900,
@@ -291,15 +305,6 @@ class _StixResultState extends State<StixResult> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Total STIX: ${_filteredItems.length} | Page $currentPage of $totalPages',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
                       ],
                     ),
                   ),
@@ -311,7 +316,6 @@ class _StixResultState extends State<StixResult> {
                         final item = paginated[index];
                         final isExpanded = _expandedMap[index] ?? false;
                         final isHovered = _hoverMap[index] ?? false;
-
                         return _buildStixCard(
                           item,
                           index,
@@ -326,32 +330,25 @@ class _StixResultState extends State<StixResult> {
                       horizontal: 16,
                       vertical: 8,
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        ElevatedButton(
-                          onPressed:
-                              currentPage > 1
-                                  ? () {
-                                    setState(() {
-                                      currentPage--;
-                                    });
-                                  }
-                                  : null,
-                          child: const Text('Previous'),
-                        ),
-                        ElevatedButton(
-                          onPressed:
-                              currentPage < totalPages
-                                  ? () {
-                                    setState(() {
-                                      currentPage++;
-                                    });
-                                  }
-                                  : null,
-                          child: const Text('Next'),
-                        ),
-                      ],
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      child: CustomNavigationButtons(
+                        onPrevious: () {
+                          setState(() {
+                            currentPage--;
+                          });
+                        },
+                        onNext: () {
+                          setState(() {
+                            currentPage++;
+                          });
+                        },
+                        isFirstPage: currentPage == 1,
+                        isLastPage: currentPage == totalPages,
+                      ),
                     ),
                   ),
                 ],
