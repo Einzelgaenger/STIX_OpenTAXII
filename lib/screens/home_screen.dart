@@ -101,10 +101,8 @@ class HomeScreen extends StatelessWidget {
             border: Border.all(color: Colors.grey.shade800),
           ),
           child: Column(
-            mainAxisAlignment:
-                MainAxisAlignment.center, // ✅ Tengah secara vertikal
-            crossAxisAlignment:
-                CrossAxisAlignment.center, // ✅ Tengah secara horizontal
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Icon(icon, color: Colors.blueAccent, size: 36),
               const SizedBox(height: 16),

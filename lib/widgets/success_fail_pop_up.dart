@@ -94,26 +94,39 @@ class SuccessFailPopUp extends StatelessWidget {
     String contentToCheck = rawContent.trim();
 
     if (!isError) {
-      // Coba decode jika memang JSON
+      debugPrint('>>> RAW RESPONSE: $rawContent');
+
+      // 1. Coba parse JSON dulu
       try {
         final decoded = jsonDecode(rawContent);
-        if (decoded is Map && decoded.containsKey('message')) {
-          final msg = decoded['message'].toString().trim().toLowerCase();
-          if (msg.contains("deleted") && msg.contains("collection")) {
-            return "Collection deleted successfully!";
+        if (decoded is Map) {
+          // Preferensi 1: message field
+          if (decoded.containsKey('message')) {
+            final msg = decoded['message'].toString().toLowerCase();
+            if (msg.contains("deleted") && msg.contains("collection")) {
+              return "Collection deleted successfully!";
+            }
+            if (msg.contains("successfully pushed")) {
+              return "Content block successfully pushed!";
+            }
+            return decoded['message'];
           }
-          if (msg.contains("pushed") && msg.contains("content")) {
-            return "Content block successfully pushed!";
+
+          // Preferensi 2: stderr field
+          if (decoded.containsKey('stderr')) {
+            final stderr = decoded['stderr'].toString().toLowerCase();
+            if (stderr.contains("successfully pushed")) {
+              return "Content block successfully pushed!";
+            }
           }
-          return decoded['message'];
         }
       } catch (_) {
-        // Kalau bukan JSON, pakai string langsung
+        // Gagal decode JSON? fallback ke plain string
         final msg = contentToCheck.toLowerCase();
         if (msg.contains("deleted") && msg.contains("collection")) {
           return "Collection deleted successfully!";
         }
-        if (msg.contains("pushed") && msg.contains("content")) {
+        if (msg.contains("successfully pushed")) {
           return "Content block successfully pushed!";
         }
       }
@@ -121,7 +134,8 @@ class SuccessFailPopUp extends StatelessWidget {
       return "Success!";
     }
 
-    // Kalau error
+    // -------------------------
+    // Error section
     try {
       final decoded = jsonDecode(rawContent);
       if (decoded is Map && decoded.containsKey('error')) {

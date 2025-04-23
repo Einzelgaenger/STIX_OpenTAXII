@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-
+import '../widgets/success_fail_pop_up.dart';
 import 'advanced_option.dart';
 import 'home_screen.dart';
 
@@ -27,101 +27,15 @@ class _SendStixScreenState extends State<SendStixScreen> {
     String rawContent, {
     bool isError = false,
   }) {
-    String message = _simplifyMessage(rawContent, isError);
-
     showDialog(
       context: context,
-      builder: (context) {
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          child: Container(
-            width: 320,
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors:
-                    isError
-                        ? [Colors.red.shade400, Colors.red.shade700]
-                        : [Colors.blue.shade400, Colors.blue.shade700],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black26,
-                  blurRadius: 10,
-                  offset: Offset(0, 6),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircleAvatar(
-                  radius: 30,
-                  backgroundColor: Colors.white,
-                  child: Icon(
-                    isError ? Icons.close : Icons.check,
-                    color: isError ? Colors.red : Colors.blue,
-                    size: 40,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  isError ? "Failed !" : "Success !",
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  message,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.white70, fontSize: 16),
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton.icon(
-                  onPressed: () => Navigator.pop(context),
-                  icon: Icon(isError ? Icons.refresh : Icons.arrow_forward),
-                  label: Text(isError ? "TRY AGAIN" : "CONTINUE"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: isError ? Colors.red : Colors.blue,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 12,
-                      horizontal: 24,
-                    ),
-                    textStyle: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ],
-            ),
+      builder:
+          (context) => SuccessFailPopUp(
+            title: title,
+            message: rawContent,
+            isError: isError,
           ),
-        );
-      },
     );
-  }
-
-  String _simplifyMessage(String rawContent, bool isError) {
-    if (!isError) return "STIX message sent successfully!";
-
-    if (rawContent.contains("Unauthorized access")) {
-      return "Unauthorized access!";
-    } else if (rawContent.contains("NOT_FOUND") ||
-        rawContent.contains("Collection collectio") ||
-        rawContent.contains("collection not found")) {
-      return "Collection not found!";
-    } else if (rawContent.contains("ERROR")) {
-      return "Server error occurred!";
-    }
-
-    return "An unexpected error occurred!";
   }
 
   void _sendStix() async {

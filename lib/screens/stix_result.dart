@@ -55,8 +55,9 @@ class _StixResultState extends State<StixResult> {
     setState(() {
       _filteredItems =
           _currentItems.where((item) {
-            final title = item['title']?.toLowerCase() ?? '';
-            return title.contains(query);
+            final title = item['title']?.toString().toLowerCase() ?? '';
+            final hash = item['hash']?.toString().toLowerCase() ?? '';
+            return title.contains(query) || hash.contains(query);
           }).toList();
       currentPage = 1;
     });
@@ -106,7 +107,11 @@ class _StixResultState extends State<StixResult> {
 
     if (confirm != true) return;
 
-    setState(() => _isDeleting = true);
+    // setState(() => _isDeleting = true);
+    setState(() {
+      _currentItems.removeWhere((item) => item['id'] == stixId);
+      _applyFilter();
+    });
 
     final url = Uri.parse('http://172.16.11.159:8000/delete_stix');
 
@@ -189,11 +194,19 @@ class _StixResultState extends State<StixResult> {
   }
 
   List<Map<String, dynamic>> _paginatedItems() {
+    if (_filteredItems.isEmpty) return [];
+    final maxPage =
+        (_filteredItems.length / itemsPerPage)
+            .ceil()
+            .clamp(1, double.infinity)
+            .toInt();
+    currentPage = currentPage.clamp(1, maxPage);
+
     final startIndex = (currentPage - 1) * itemsPerPage;
-    final endIndex =
-        (startIndex + itemsPerPage) > _filteredItems.length
-            ? _filteredItems.length
-            : startIndex + itemsPerPage;
+    final endIndex = (startIndex + itemsPerPage).clamp(
+      0,
+      _filteredItems.length,
+    );
     return _filteredItems.sublist(startIndex, endIndex);
   }
 
@@ -227,13 +240,6 @@ class _StixResultState extends State<StixResult> {
               ? const Center(
                 child: CircularProgressIndicator(color: Colors.white),
               )
-              : _currentItems.isEmpty
-              ? const Center(
-                child: Text(
-                  'No STIX data to show.',
-                  style: TextStyle(color: Colors.white70),
-                ),
-              )
               : Column(
                 children: [
                   Padding(
@@ -254,13 +260,12 @@ class _StixResultState extends State<StixResult> {
                             letterSpacing: 0.5,
                           ),
                         ),
-
                         const SizedBox(height: 20),
                         TextField(
                           controller: _searchController,
                           style: const TextStyle(color: Colors.white),
                           decoration: InputDecoration(
-                            hintText: 'Search by Title...',
+                            hintText: 'Search by Title or Value...',
                             hintStyle: const TextStyle(color: Colors.white54),
                             filled: true,
                             fillColor: Colors.grey.shade900,
@@ -278,7 +283,9 @@ class _StixResultState extends State<StixResult> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             SelectableText(
-                              'Showing ${(currentPage - 1) * itemsPerPage + 1} - ${((currentPage) * itemsPerPage).clamp(1, _filteredItems.length)} of ${_filteredItems.length} result',
+                              _filteredItems.isEmpty
+                                  ? 'No results found'
+                                  : 'Showing ${(currentPage - 1) * itemsPerPage + 1} - ${((currentPage) * itemsPerPage).clamp(1, _filteredItems.length)} of ${_filteredItems.length} result',
                               style: const TextStyle(color: Colors.white70),
                             ),
                             DropdownButton<String>(
@@ -298,9 +305,7 @@ class _StixResultState extends State<StixResult> {
                                 ),
                               ],
                               onChanged: (value) {
-                                if (value != null) {
-                                  _toggleSortOrder();
-                                }
+                                if (value != null) _toggleSortOrder();
                               },
                             ),
                           ],
@@ -308,49 +313,47 @@ class _StixResultState extends State<StixResult> {
                       ],
                     ),
                   ),
+                  const SizedBox(height: 12),
                   Expanded(
-                    child: ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: paginated.length,
-                      itemBuilder: (context, index) {
-                        final item = paginated[index];
-                        final isExpanded = _expandedMap[index] ?? false;
-                        final isHovered = _hoverMap[index] ?? false;
-                        return _buildStixCard(
-                          item,
-                          index,
-                          isExpanded,
-                          isHovered,
-                        );
-                      },
-                    ),
+                    child:
+                        _filteredItems.isEmpty
+                            ? const Center(
+                              child: Text(
+                                'No STIX matched your search.',
+                                style: TextStyle(color: Colors.white70),
+                              ),
+                            )
+                            : ListView.builder(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              itemCount: paginated.length,
+                              itemBuilder: (context, index) {
+                                final item = paginated[index];
+                                final isExpanded = _expandedMap[index] ?? false;
+                                final isHovered = _hoverMap[index] ?? false;
+                                return _buildStixCard(
+                                  item,
+                                  index,
+                                  isExpanded,
+                                  isHovered,
+                                );
+                              },
+                            ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    child: Padding(
+                  if (_filteredItems.isNotEmpty)
+                    Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 8,
                       ),
                       child: CustomNavigationButtons(
-                        onPrevious: () {
-                          setState(() {
-                            currentPage--;
-                          });
-                        },
-                        onNext: () {
-                          setState(() {
-                            currentPage++;
-                          });
-                        },
+                        onPrevious: () => setState(() => currentPage--),
+                        onNext: () => setState(() => currentPage++),
                         isFirstPage: currentPage == 1,
                         isLastPage: currentPage == totalPages,
                       ),
                     ),
-                  ),
                 ],
               ),
     );
@@ -407,7 +410,7 @@ class _StixResultState extends State<StixResult> {
               ),
               if (isExpanded) ...[
                 const Divider(height: 24, color: Colors.white24),
-                _buildExpandedContent(item),
+                _buildExpandedContent(item, index),
               ],
             ],
           ),
@@ -416,7 +419,7 @@ class _StixResultState extends State<StixResult> {
     );
   }
 
-  Widget _buildExpandedContent(Map<String, dynamic> item) {
+  Widget _buildExpandedContent(Map<String, dynamic> item, int index) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -463,9 +466,19 @@ class _StixResultState extends State<StixResult> {
                     color: Colors.redAccent,
                     size: 18,
                   ),
-                  onPressed:
-                      () =>
-                          _deleteStix(item['id'], _filteredItems.indexOf(item)),
+                  onPressed: () {
+                    final index = _filteredItems.indexWhere(
+                      (i) => i['id'] == item['id'],
+                    );
+                    if (index != -1) {
+                      _deleteStix(item['id'], index);
+                    } else {
+                      _showSnackbar(
+                        'Item not found in current filtered list.',
+                        error: true,
+                      );
+                    }
+                  },
                 ),
               ],
             ),
