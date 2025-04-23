@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+
 import 'home_screen.dart';
 import 'stix_result.dart';
+import '../widgets/success_fail_pop_up.dart';
 
 class PollingScreen extends StatefulWidget {
   const PollingScreen({super.key});
@@ -21,14 +23,15 @@ class _PollingScreenState extends State<PollingScreen> {
 
   bool _isLoading = false;
 
-  void _showErrorSnackbar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.redAccent,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
+  void _showCustomDialog(String title, String content, {bool isError = false}) {
+    showDialog(
+      context: context,
+      builder:
+          (_) => SuccessFailPopUp(
+            title: title,
+            message: content,
+            isError: isError,
+          ),
     );
   }
 
@@ -42,14 +45,13 @@ class _PollingScreenState extends State<PollingScreen> {
         password.isEmpty ||
         collection.isEmpty ||
         path.isEmpty) {
-      _showErrorSnackbar("All fields are required.");
+      _showCustomDialog("Error", "All fields are required.", isError: true);
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
-      // Step 1: Authentication Check
       final authUrl = Uri.parse(
         'http://172.16.11.159:8000/poll_stix_authenticate',
       );
@@ -65,18 +67,24 @@ class _PollingScreenState extends State<PollingScreen> {
       );
 
       if (authResponse.statusCode != 200) {
-        // Autentikasi gagal
         try {
           final errorBody = jsonDecode(authResponse.body);
-          _showErrorSnackbar(errorBody['error'] ?? 'Authentication failed.');
+          _showCustomDialog(
+            "Error",
+            errorBody['error'] ?? 'Authentication failed.',
+            isError: true,
+          );
         } catch (_) {
-          _showErrorSnackbar('Authentication failed with unknown error.');
+          _showCustomDialog(
+            "Error",
+            'Authentication failed with unknown error.',
+            isError: true,
+          );
         }
-        if (mounted) setState(() => _isLoading = false);
+        setState(() => _isLoading = false);
         return;
       }
 
-      // Step 2: Fetch STIX list
       final listUrl = Uri.parse('http://172.16.11.159:8000/list_stix');
       final listResponse = await http.post(
         listUrl,
@@ -89,38 +97,34 @@ class _PollingScreenState extends State<PollingScreen> {
       );
 
       if (listResponse.statusCode == 200) {
-        try {
-          final List<dynamic> decoded = jsonDecode(listResponse.body);
-          final List<Map<String, dynamic>> parsedList =
-              decoded.cast<Map<String, dynamic>>();
+        final List<dynamic> decoded = jsonDecode(listResponse.body);
+        final List<Map<String, dynamic>> parsedList =
+            decoded.cast<Map<String, dynamic>>();
 
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder:
-                  (_) => StixResult(
-                    stixItems: parsedList,
-                    collectionName: collection,
-                    username: username,
-                    password: password,
-                  ),
-            ),
-          );
-        } catch (e) {
-          _showErrorSnackbar('Failed to parse server response.');
-        }
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder:
+                (_) => StixResult(
+                  stixItems: parsedList,
+                  collectionName: collection,
+                  username: username,
+                  password: password,
+                ),
+          ),
+        );
       } else {
-        try {
-          final errorBody = jsonDecode(listResponse.body);
-          _showErrorSnackbar(errorBody['error'] ?? 'Failed to load STIX.');
-        } catch (_) {
-          _showErrorSnackbar('Failed to load STIX: Unknown server error.');
-        }
+        final errorBody = jsonDecode(listResponse.body);
+        _showCustomDialog(
+          "Error",
+          errorBody['error'] ?? 'Failed to load STIX.',
+          isError: true,
+        );
       }
     } catch (e) {
-      _showErrorSnackbar('Unexpected Error: $e');
+      _showCustomDialog("Error", "Unexpected error: $e", isError: true);
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      setState(() => _isLoading = false);
     }
   }
 
@@ -130,8 +134,10 @@ class _PollingScreenState extends State<PollingScreen> {
     final password = _passwordController.text.trim();
 
     if (collection.isEmpty || username.isEmpty || password.isEmpty) {
-      _showErrorSnackbar(
+      _showCustomDialog(
+        "Error",
         "Collection Name, Username, and Password are required to delete.",
+        isError: true,
       );
       return;
     }
@@ -149,26 +155,21 @@ class _PollingScreenState extends State<PollingScreen> {
       );
 
       if (response.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Collection deleted successfully.'),
-            backgroundColor: Colors.green,
-          ),
+        _showCustomDialog(
+          "Success",
+          "Collection deleted successfully.",
+          isError: false,
         );
       } else {
-        try {
-          final errorBody = jsonDecode(response.body);
-          _showErrorSnackbar(
-            errorBody['error'] ?? 'Failed to delete collection.',
-          );
-        } catch (_) {
-          _showErrorSnackbar(
-            'Failed to delete collection: Unknown server error.',
-          );
-        }
+        final errorBody = jsonDecode(response.body);
+        _showCustomDialog(
+          "Error",
+          errorBody['error'] ?? 'Failed to delete collection.',
+          isError: true,
+        );
       }
     } catch (e) {
-      _showErrorSnackbar("Unexpected Error: $e");
+      _showCustomDialog("Error", "Unexpected Error: $e", isError: true);
     }
   }
 
