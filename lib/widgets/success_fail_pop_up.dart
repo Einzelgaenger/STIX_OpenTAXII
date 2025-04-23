@@ -91,19 +91,37 @@ class SuccessFailPopUp extends StatelessWidget {
   }
 
   static String _simplifyMessage(String rawContent, bool isError) {
-    String contentToCheck = rawContent;
+    String contentToCheck = rawContent.trim();
 
     if (!isError) {
+      // Coba decode jika memang JSON
       try {
         final decoded = jsonDecode(rawContent);
         if (decoded is Map && decoded.containsKey('message')) {
+          final msg = decoded['message'].toString().trim().toLowerCase();
+          if (msg.contains("deleted") && msg.contains("collection")) {
+            return "Collection deleted successfully!";
+          }
+          if (msg.contains("pushed") && msg.contains("content")) {
+            return "Content block successfully pushed!";
+          }
           return decoded['message'];
         }
-      } catch (_) {}
+      } catch (_) {
+        // Kalau bukan JSON, pakai string langsung
+        final msg = contentToCheck.toLowerCase();
+        if (msg.contains("deleted") && msg.contains("collection")) {
+          return "Collection deleted successfully!";
+        }
+        if (msg.contains("pushed") && msg.contains("content")) {
+          return "Content block successfully pushed!";
+        }
+      }
+
       return "Success!";
     }
 
-    // Kalau error, kita parsing dan cocokin isi
+    // Kalau error
     try {
       final decoded = jsonDecode(rawContent);
       if (decoded is Map && decoded.containsKey('error')) {
@@ -117,11 +135,16 @@ class SuccessFailPopUp extends StatelessWidget {
 
     if (contentToCheck.contains("unauthorized")) {
       return "Unauthorized access!";
-    } else if (contentToCheck.contains("not_found") ||
+    }
+    if (contentToCheck.contains("invalid path")) {
+      return "Invalid Path!";
+    }
+    if (contentToCheck.contains("not_found") ||
         contentToCheck.contains("collection collectio") ||
         contentToCheck.contains("collection not found")) {
       return "Collection not found!";
-    } else if (contentToCheck.contains("error")) {
+    }
+    if (contentToCheck.contains("error")) {
       return "Server error occurred!";
     }
 
