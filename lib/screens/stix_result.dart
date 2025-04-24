@@ -4,7 +4,7 @@ import 'dart:html';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../widgets/custom_navigation_buttons.dart';
+import '../widgets/previous_next_buttons.dart';
 import 'home_screen.dart';
 
 class StixResult extends StatefulWidget {
@@ -347,7 +347,7 @@ class _StixResultState extends State<StixResult> {
                         horizontal: 16,
                         vertical: 8,
                       ),
-                      child: CustomNavigationButtons(
+                      child: PreviousNextButton(
                         onPrevious: () => setState(() => currentPage--),
                         onNext: () => setState(() => currentPage++),
                         isFirstPage: currentPage == 1,

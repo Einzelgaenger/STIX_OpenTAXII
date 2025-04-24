@@ -186,7 +186,7 @@ class _AdvancedOptionState extends State<AdvancedOption> {
     return Scaffold(
       backgroundColor: const Color(0xFF101820),
       appBar: AppBar(
-        title: const Text("Advanced STIX Push"),
+        title: const SelectableText("Advanced STIX Push"),
         backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: Colors.white,

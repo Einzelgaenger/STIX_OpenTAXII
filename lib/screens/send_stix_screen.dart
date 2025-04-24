@@ -130,7 +130,7 @@ class _SendStixScreenState extends State<SendStixScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: Colors.white,
-        title: const Text('Send STIX Message'),
+        title: const SelectableText('Send STIX Message'),
         actions: [
           IconButton(
             icon: const Icon(Icons.home),

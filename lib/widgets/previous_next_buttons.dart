@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
-class CustomNavigationButtons extends StatelessWidget {
+class PreviousNextButton extends StatelessWidget {
   final VoidCallback? onPrevious;
   final VoidCallback? onNext;
   final bool isFirstPage;
   final bool isLastPage;
 
-  const CustomNavigationButtons({
+  const PreviousNextButton({
     super.key,
     required this.onPrevious,
     required this.onNext,

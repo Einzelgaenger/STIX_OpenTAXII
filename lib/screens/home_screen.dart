@@ -15,7 +15,7 @@ class HomeScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text(
+              const SelectableText(
                 'Your STIX Gateway for Threat Intelligence.',
                 style: TextStyle(
                   fontSize: 32,
@@ -24,7 +24,7 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              Text(
+              SelectableText(
                 'Explore what you can do with STIX & TAXII integration',
                 style: TextStyle(fontSize: 16, color: Colors.grey.shade400),
               ),

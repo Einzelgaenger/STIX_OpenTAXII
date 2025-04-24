@@ -200,7 +200,7 @@ class _PollingScreenState extends State<PollingScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: Colors.white,
-        title: const Text('Poll STIX from Server'),
+        title: const SelectableText('Poll STIX from Server'),
         actions: [
           IconButton(
             icon: const Icon(Icons.home),
@@ -223,13 +223,13 @@ class _PollingScreenState extends State<PollingScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _buildInput('Username *', _usernameController),
-                const SizedBox(height: 12),
+                const SizedBox(height: 20),
                 _buildInput('Password *', _passwordController, obscure: true),
-                const SizedBox(height: 12),
+                const SizedBox(height: 20),
                 _buildInput('Collection Name *', _collectionController),
-                const SizedBox(height: 12),
+                const SizedBox(height: 20),
                 _buildInput('Custom Path (optional) *', _pathController),
-                const SizedBox(height: 24),
+                const SizedBox(height: 30),
                 if (_isLoading)
                   const Center(
                     child: CircularProgressIndicator(color: Colors.white),
@@ -239,6 +239,7 @@ class _PollingScreenState extends State<PollingScreen> {
                     onPressed: _pollSTIX,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blueAccent,
+                      foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -254,6 +255,7 @@ class _PollingScreenState extends State<PollingScreen> {
                     onPressed: _deleteCollection,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.redAccent,
+                      foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
