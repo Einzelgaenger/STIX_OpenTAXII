@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:html';
-import 'package:google_fonts/google_fonts.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../widgets/previous_next_buttons.dart';
@@ -253,7 +252,7 @@ class _StixResultState extends State<StixResult> {
                         const SizedBox(height: 10),
                         Text(
                           widget.collectionName,
-                          style: GoogleFonts.lato(
+                          style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.w700,
                             color: Colors.white,

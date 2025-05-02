@@ -310,7 +310,7 @@ class _AdvancedOptionState extends State<AdvancedOption> {
                 ),
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
-                  child: Text(
+                  child: SelectableText(
                     _previewXml!,
                     style: const TextStyle(
                       fontFamily: 'monospace',
