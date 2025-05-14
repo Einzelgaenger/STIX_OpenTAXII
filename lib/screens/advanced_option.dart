@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../widgets/success_fail_pop_up.dart';
 import 'home_screen.dart';
+import '../config.dart';
 
 class AdvancedOption extends StatefulWidget {
   const AdvancedOption({super.key});
@@ -133,7 +134,7 @@ class _AdvancedOptionState extends State<AdvancedOption> {
     setState(() => _isLoading = true);
 
     final response = await http.post(
-      Uri.parse('http://172.16.11.159:8000/push'),
+      Uri.parse('AppConfig.pushStixUrl'),
       headers: {
         'Content-Type': 'application/xml',
         'X-Username': username,
