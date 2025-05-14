@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import '../config.dart';
 import '../widgets/success_fail_pop_up.dart';
 import 'advanced_option.dart';
 import 'home_screen.dart';
@@ -72,7 +73,7 @@ class _SendStixScreenState extends State<SendStixScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://172.16.11.159:8000/push'),
+        Uri.parse(AppConfig.pushStixUrl),
         headers: {
           'Content-Type': 'application/xml',
           'X-Username': username,

@@ -4,6 +4,7 @@ import 'dart:html';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../config.dart';
 import '../widgets/previous_next_buttons.dart';
 import 'home_screen.dart';
 
@@ -113,7 +114,7 @@ class _StixResultState extends State<StixResult> {
       _applyFilter();
     });
 
-    final url = Uri.parse('http://172.16.11.159:8000/delete_stix');
+    final url = Uri.parse(AppConfig.deleteStixUrl);
 
     try {
       final response = await http.post(

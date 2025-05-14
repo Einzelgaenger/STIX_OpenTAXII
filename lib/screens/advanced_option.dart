@@ -134,7 +134,7 @@ class _AdvancedOptionState extends State<AdvancedOption> {
     setState(() => _isLoading = true);
 
     final response = await http.post(
-      Uri.parse('AppConfig.pushStixUrl'),
+      Uri.parse(AppConfig.pushStixUrl),
       headers: {
         'Content-Type': 'application/xml',
         'X-Username': username,

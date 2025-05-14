@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'home_screen.dart';
 import 'stix_result.dart';
 import '../widgets/success_fail_pop_up.dart';
+import '../config.dart';
 
 class PollingScreen extends StatefulWidget {
   const PollingScreen({super.key});
@@ -52,9 +53,7 @@ class _PollingScreenState extends State<PollingScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final authUrl = Uri.parse(
-        'http://172.16.11.159:8000/poll_stix_authenticate',
-      );
+      final authUrl = Uri.parse(AppConfig.pollAuthenticateUrl);
       final authResponse = await http.post(
         authUrl,
         headers: {'Content-Type': 'application/json'},
@@ -85,7 +84,7 @@ class _PollingScreenState extends State<PollingScreen> {
         return;
       }
 
-      final listUrl = Uri.parse('http://172.16.11.159:8000/list_stix');
+      final listUrl = Uri.parse(AppConfig.listStixUrl);
       final listResponse = await http.post(
         listUrl,
         headers: {'Content-Type': 'application/json'},
@@ -143,7 +142,7 @@ class _PollingScreenState extends State<PollingScreen> {
     }
 
     try {
-      final url = Uri.parse('http://172.16.11.159:8000/delete_collection');
+      final url = Uri.parse(AppConfig.deleteCollectionUrl);
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
