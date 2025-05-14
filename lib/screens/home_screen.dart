@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'add_device_screen.dart';
 import 'poll_screen.dart';
 import 'send_stix_screen.dart';
 
@@ -60,6 +61,20 @@ class HomeScreen extends StatelessWidget {
                         context,
                         MaterialPageRoute(
                           builder: (_) => const PollingScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildFeatureCard(
+                    context,
+                    icon: Icons.add_box,
+                    title: 'Add Device',
+                    subtitle: 'Register new FMC/CTI source.',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const AddDeviceScreen(),
                         ),
                       );
                     },
