@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'add_device_screen.dart';
+import 'device_list_screen.dart'; // Ganti dari add_device_screen.dart
 import 'poll_screen.dart';
 import 'send_stix_screen.dart';
 
@@ -27,7 +27,7 @@ class HomeScreen extends StatelessWidget {
               const SizedBox(height: 12),
               SelectableText(
                 'Explore what you can do with STIX & TAXII integration',
-                style: TextStyle(fontSize: 16, color: Colors.grey.shade400),
+                style: TextStyle(fontSize: 16, color: Colors.grey),
               ),
               const SizedBox(height: 40),
 
@@ -67,14 +67,14 @@ class HomeScreen extends StatelessWidget {
                   ),
                   _buildFeatureCard(
                     context,
-                    icon: Icons.add_box,
-                    title: 'Add Device',
-                    subtitle: 'Register new FMC/CTI source.',
+                    icon: Icons.dns,
+                    title: 'Manage Devices',
+                    subtitle: 'View and sync CTI sources.',
                     onTap: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => const AddDeviceScreen(),
+                          builder: (_) => const DeviceListScreen(),
                         ),
                       );
                     },
