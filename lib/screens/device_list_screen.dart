@@ -15,6 +15,8 @@ class DeviceListScreen extends StatefulWidget {
 }
 
 class _DeviceListScreenState extends State<DeviceListScreen> {
+  Map<int, bool> _hoverMap = {};
+  Map<int, bool> _expandedMap = {};
   List<Map<String, dynamic>> devices = [];
   bool isLoading = false;
 
@@ -272,61 +274,118 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
                 itemBuilder: (_, index) {
                   final device = devices[index];
                   final sources = device['sources'] ?? [];
+                  final isHovered = _hoverMap[index] ?? false;
+                  final isExpanded = _expandedMap[index] ?? false;
 
-                  return Card(
-                    margin: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    color: const Color(0xFF1C1F26),
-                    child: ExpansionTile(
-                      collapsedIconColor: Colors.white70,
-                      iconColor: Colors.blueAccent,
-                      title: Text(
-                        device['device_ip'],
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                      subtitle: Text(
-                        "Username: ${device['username']}",
-                        style: const TextStyle(color: Colors.white70),
-                      ),
-                      trailing: Wrap(
-                        spacing: 6,
-                        children: [
-                          IconButton(
-                            icon: const Icon(
-                              Icons.sync,
-                              color: Colors.blueAccent,
-                            ),
-                            onPressed: () => syncDevice(device['device_ip']),
-                          ),
-                          IconButton(
-                            icon: const Icon(
-                              Icons.delete,
-                              color: Colors.redAccent,
-                            ),
-                            onPressed: () => confirmDelete(device['device_ip']),
-                          ),
-                        ],
-                      ),
-                      children:
-                          sources.map<Widget>((src) {
-                            final ts = src['last_processed'];
-                            final tsStr =
-                                ts == 0
-                                    ? 'Never'
-                                    : "${DateFormat('dd-MM-yyyy • HH:mm', 'id_ID').format(DateTime.fromMillisecondsSinceEpoch(ts * 1000, isUtc: true).add(const Duration(hours: 7)))} WIB";
+                  final baseColor = const Color(0xFF1C1F26);
+                  final hoverColor = Colors.deepPurple.shade900.withOpacity(
+                    0.2,
+                  );
+                  final borderColor =
+                      isHovered
+                          ? Colors.deepPurpleAccent.withOpacity(0.6)
+                          : Colors.grey.shade800;
 
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 6,
+                  return MouseRegion(
+                    onEnter: (_) => setState(() => _hoverMap[index] = true),
+                    onExit: (_) => setState(() => _hoverMap[index] = false),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () {
+                        setState(() {
+                          _expandedMap[index] = !isExpanded;
+                        });
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 250),
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: isExpanded ? hoverColor : baseColor,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: borderColor,
+                            width: isHovered ? 1.4 : 1.0,
+                          ),
+                          boxShadow: [
+                            if (isHovered)
+                              BoxShadow(
+                                color: Colors.deepPurpleAccent.withOpacity(
+                                  0.08,
+                                ),
+                                blurRadius: 18,
+                                offset: const Offset(0, 6),
                               ),
-                              child: Card(
-                                color: const Color(0xFF2C2C2E),
-                                elevation: 2,
-                                child: Padding(
-                                  padding: const EdgeInsets.all(12.0),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.memory,
+                                  color: Colors.white54,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    device['device_ip'],
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.sync,
+                                    color: Colors.blueAccent,
+                                  ),
+                                  tooltip: 'Sync',
+                                  onPressed:
+                                      () => syncDevice(device['device_ip']),
+                                ),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.delete,
+                                    color: Colors.redAccent,
+                                  ),
+                                  tooltip: 'Delete',
+                                  onPressed:
+                                      () => confirmDelete(device['device_ip']),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              "Username: ${device['username']}",
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 13,
+                              ),
+                            ),
+                            if (isExpanded) ...[
+                              const SizedBox(height: 16),
+                              for (final src in sources)
+                                Container(
+                                  margin: const EdgeInsets.only(bottom: 10),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 12,
+                                  ),
+                                  width: double.infinity,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF25282F),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: Colors.white12),
+                                  ),
                                   child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
@@ -335,22 +394,25 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
                                         "Source: ${src['source_name']}",
                                         style: const TextStyle(
                                           color: Colors.white,
-                                          fontWeight: FontWeight.bold,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14,
                                         ),
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
-                                        "Last Processed: $tsStr",
+                                        "Last Processed: ${src['last_processed'] == 0 ? 'Never' : "${DateFormat('dd-MM-yyyy • HH:mm', 'id_ID').format(DateTime.fromMillisecondsSinceEpoch(src['last_processed'] * 1000, isUtc: true).add(const Duration(hours: 7)))} WIB"}",
                                         style: const TextStyle(
                                           color: Colors.white70,
+                                          fontSize: 13,
                                         ),
                                       ),
                                     ],
                                   ),
                                 ),
-                              ),
-                            );
-                          }).toList(),
+                            ],
+                          ],
+                        ),
+                      ),
                     ),
                   );
                 },
