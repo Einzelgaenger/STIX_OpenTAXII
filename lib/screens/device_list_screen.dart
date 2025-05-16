@@ -15,8 +15,11 @@ class DeviceListScreen extends StatefulWidget {
 }
 
 class _DeviceListScreenState extends State<DeviceListScreen> {
-  Map<int, bool> _hoverMap = {};
-  Map<int, bool> _expandedMap = {};
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  final Map<int, bool> _hoverMap = {};
+  final Map<int, bool> _expandedMap = {};
   List<Map<String, dynamic>> devices = [];
   bool isLoading = false;
 
@@ -228,6 +231,15 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final filteredDevices =
+        devices
+            .where(
+              (d) =>
+                  d['device_ip'].toLowerCase().contains(_searchQuery) ||
+                  d['username'].toLowerCase().contains(_searchQuery),
+            )
+            .toList();
+
     return Scaffold(
       backgroundColor: const Color(0xFF101820),
       appBar: AppBar(
@@ -257,11 +269,34 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
             },
           ),
         ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(56),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: TextField(
+              controller: _searchController,
+              onChanged:
+                  (value) => setState(() => _searchQuery = value.toLowerCase()),
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                hintText: 'Search by IP or Username...',
+                hintStyle: const TextStyle(color: Colors.white60),
+                filled: true,
+                fillColor: const Color(0xFF2B2F36),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                prefixIcon: const Icon(Icons.search, color: Colors.white60),
+              ),
+            ),
+          ),
+        ),
       ),
       body:
           isLoading
               ? const Center(child: CircularProgressIndicator())
-              : devices.isEmpty
+              : filteredDevices.isEmpty
               ? const Center(
                 child: Text(
                   "No devices yet.\nClick '+' to add one.",
@@ -270,9 +305,9 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
                 ),
               )
               : ListView.builder(
-                itemCount: devices.length,
+                itemCount: filteredDevices.length,
                 itemBuilder: (_, index) {
-                  final device = devices[index];
+                  final device = filteredDevices[index];
                   final sources = device['sources'] ?? [];
                   final isHovered = _hoverMap[index] ?? false;
                   final isExpanded = _expandedMap[index] ?? false;
@@ -291,11 +326,9 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
                     onExit: (_) => setState(() => _hoverMap[index] = false),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(16),
-                      onTap: () {
-                        setState(() {
-                          _expandedMap[index] = !isExpanded;
-                        });
-                      },
+                      onTap:
+                          () =>
+                              setState(() => _expandedMap[index] = !isExpanded),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 250),
                         margin: const EdgeInsets.symmetric(
@@ -375,12 +408,12 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
                               const SizedBox(height: 16),
                               for (final src in sources)
                                 Container(
+                                  width: double.infinity,
                                   margin: const EdgeInsets.only(bottom: 10),
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 14,
                                     vertical: 12,
                                   ),
-                                  width: double.infinity,
                                   decoration: BoxDecoration(
                                     color: const Color(0xFF25282F),
                                     borderRadius: BorderRadius.circular(10),
