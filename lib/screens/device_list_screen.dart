@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../config.dart';
-import 'package:intl/intl.dart'; // pastikan sudah import
-// import 'package:intl/date_symbol_data_local.dart';
+import '../widgets/alert_dialog_widget.dart';
+import 'package:intl/intl.dart';
+import 'home_screen.dart';
 
 class DeviceListScreen extends StatefulWidget {
   const DeviceListScreen({super.key});
@@ -91,24 +92,14 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
     showDialog(
       context: context,
       builder:
-          (_) => AlertDialog(
-            title: const Text("Confirm Delete"),
-            content: Text(
-              "Are you sure you want to delete $ip from the database?",
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text("Cancel"),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  deleteDevice(ip);
-                },
-                child: const Text("Delete"),
-              ),
-            ],
+          (_) => AlertDialogWidget(
+            title: "Confirm Delete",
+            message: "Are you sure you want to delete $ip from the database?",
+            onCancel: () => Navigator.pop(context),
+            onConfirm: () {
+              Navigator.pop(context);
+              deleteDevice(ip);
+            },
           ),
     );
   }
@@ -137,7 +128,7 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
       return;
     }
 
-    Navigator.pop(context); // Close dialog
+    Navigator.pop(context);
     setState(() => isLoading = true);
 
     final uri = Uri.parse(AppConfig.addDeviceUrl);
@@ -170,29 +161,48 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
       context: context,
       builder:
           (_) => AlertDialog(
-            title: const Text("Add New Device"),
+            backgroundColor: const Color(0xFF1C1F26),
+            title: const Text(
+              "Add New Device",
+              style: TextStyle(color: Colors.white),
+            ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: ipController,
-                  decoration: const InputDecoration(labelText: "Device IP"),
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(
+                    labelText: "Device IP",
+                    labelStyle: TextStyle(color: Colors.white70),
+                  ),
                 ),
                 TextField(
                   controller: usernameController,
-                  decoration: const InputDecoration(labelText: "Username"),
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(
+                    labelText: "Username",
+                    labelStyle: TextStyle(color: Colors.white70),
+                  ),
                 ),
                 TextField(
                   controller: passwordController,
-                  decoration: const InputDecoration(labelText: "Password"),
+                  style: const TextStyle(color: Colors.white),
                   obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: "Password",
+                    labelStyle: TextStyle(color: Colors.white70),
+                  ),
                 ),
               ],
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text("Cancel"),
+                child: const Text(
+                  "Cancel",
+                  style: TextStyle(color: Colors.grey),
+                ),
               ),
               ElevatedButton(onPressed: addDevice, child: const Text("Add")),
             ],
@@ -205,12 +215,19 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
       context: context,
       builder:
           (_) => AlertDialog(
-            title: Text(title),
-            content: Text(content),
+            backgroundColor: const Color(0xFF1C1F26),
+            title: Text(title, style: const TextStyle(color: Colors.white)),
+            content: Text(
+              content,
+              style: const TextStyle(color: Colors.white70),
+            ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text("OK"),
+                child: const Text(
+                  "OK",
+                  style: TextStyle(color: Colors.blueAccent),
+                ),
               ),
             ],
           ),
@@ -220,12 +237,38 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFF101820),
       appBar: AppBar(
-        title: const Text("Device Management"),
+        backgroundColor: const Color(0xFF1C1F26),
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back,
+            color: Colors.white,
+          ), // FIXED: visible back button
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const SelectableText(
+          "Device Management",
+          style: TextStyle(color: Colors.white),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.add),
+            icon: const Icon(Icons.add, color: Colors.white),
+            tooltip: 'Add New Device',
             onPressed: showAddDeviceDialog,
+          ),
+          IconButton(
+            icon: const Icon(
+              Icons.home,
+              color: Colors.white,
+            ), // FIXED: white home icon
+            tooltip: 'Back to Home',
+            onPressed: () {
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const HomeScreen()),
+                (route) => false,
+              );
+            },
           ),
         ],
       ),
@@ -251,9 +294,18 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
                       horizontal: 16,
                       vertical: 8,
                     ),
+                    color: const Color(0xFF1C1F26),
                     child: ExpansionTile(
-                      title: Text(device['device_ip']),
-                      subtitle: Text("Username: ${device['username']}"),
+                      collapsedIconColor: Colors.white70,
+                      iconColor: Colors.blueAccent,
+                      title: Text(
+                        device['device_ip'],
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                      subtitle: Text(
+                        "Username: ${device['username']}",
+                        style: const TextStyle(color: Colors.white70),
+                      ),
                       trailing: Wrap(
                         spacing: 6,
                         children: [
@@ -281,36 +333,38 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
                                     ? 'Never'
                                     : "${DateFormat('dd-MM-yyyy • HH:mm', 'id_ID').format(DateTime.fromMillisecondsSinceEpoch(ts * 1000, isUtc: true).add(const Duration(hours: 7)))} WIB";
 
-                            return StatefulBuilder(
-                              builder: (context, setLocalState) {
-                                return Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 6,
-                                  ),
-                                  child: Card(
-                                    elevation: 2,
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(12.0),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            "Source: ${src['source_name']}",
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text("Last Processed: $tsStr"),
-                                          const SizedBox(height: 8),
-                                        ],
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 6,
+                              ),
+                              child: Card(
+                                color: const Color(0xFF2C2C2E),
+                                elevation: 2,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(12.0),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Source: ${src['source_name']}",
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
-                                    ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        "Last Processed: $tsStr",
+                                        style: const TextStyle(
+                                          color: Colors.white70,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                );
-                              },
+                                ),
+                              ),
                             );
                           }).toList(),
                     ),
