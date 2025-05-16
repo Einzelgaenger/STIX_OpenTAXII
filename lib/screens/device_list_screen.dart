@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../config.dart';
 import '../widgets/alert_dialog_widget.dart';
+import '../widgets/snack_bar_widget.dart';
 import 'package:intl/intl.dart';
 import 'home_screen.dart';
 
@@ -49,10 +50,10 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
           setState(() => devices = []);
         }
       } else {
-        _showDialog("Error", "Failed to fetch device list.");
+        _showSnack("Failed to fetch device list.", isError: true);
       }
     } catch (e) {
-      _showDialog("Error", "Network error: $e");
+      _showSnack("Network error: $e", isError: true);
     }
   }
 
@@ -81,10 +82,10 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
     );
 
     if (response.statusCode == 200) {
-      _showDialog("Deleted", "Device $ip has been removed.");
+      _showSnack("Device $ip has been removed.", mode: "remove");
       fetchDevices();
     } else {
-      _showDialog("Error", "Failed to delete device.");
+      _showSnack("Failed to delete device.", isError: true);
     }
   }
 
@@ -114,9 +115,9 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
     setState(() => isLoading = false);
 
     final body = jsonDecode(response.body);
-    _showDialog(
-      response.statusCode == 200 ? "Success" : "Error",
+    _showSnack(
       body['message'] ?? body['error'] ?? 'Sync completed.',
+      isError: response.statusCode != 200,
     );
     fetchDevices();
   }
@@ -145,9 +146,10 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
     setState(() => isLoading = false);
     final body = jsonDecode(response.body);
 
-    _showDialog(
-      response.statusCode == 200 ? "Device Added" : "Error",
+    _showSnack(
       body['message'] ?? body['error'] ?? 'Unknown response',
+      mode: "add",
+      isError: response.statusCode != 200,
     );
     fetchDevices();
   }
@@ -210,27 +212,15 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
     );
   }
 
-  void _showDialog(String title, String content) {
-    showDialog(
-      context: context,
-      builder:
-          (_) => AlertDialog(
-            backgroundColor: const Color(0xFF1C1F26),
-            title: Text(title, style: const TextStyle(color: Colors.white)),
-            content: Text(
-              content,
-              style: const TextStyle(color: Colors.white70),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text(
-                  "OK",
-                  style: TextStyle(color: Colors.blueAccent),
-                ),
-              ),
-            ],
-          ),
+  void _showSnack(
+    String message, {
+    String mode = "default",
+    bool isError = false,
+  }) {
+    SnackBarWidget.show(
+      context,
+      message: message,
+      mode: isError ? "error" : mode,
     );
   }
 
@@ -241,10 +231,7 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF1C1F26),
         leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back,
-            color: Colors.white,
-          ), // FIXED: visible back button
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
         title: const SelectableText(
@@ -258,10 +245,7 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
             onPressed: showAddDeviceDialog,
           ),
           IconButton(
-            icon: const Icon(
-              Icons.home,
-              color: Colors.white,
-            ), // FIXED: white home icon
+            icon: const Icon(Icons.home, color: Colors.white),
             tooltip: 'Back to Home',
             onPressed: () {
               Navigator.of(context).pushAndRemoveUntil(
