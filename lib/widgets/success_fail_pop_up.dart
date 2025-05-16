@@ -1,5 +1,4 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 
 class SuccessFailPopUp extends StatelessWidget {
@@ -16,75 +15,109 @@ class SuccessFailPopUp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final Color baseColor =
+        isError ? const Color(0xFFE53935) : Colors.blueAccent;
+    final Color textColor = baseColor;
+
+    final Size screenSize = MediaQuery.of(context).size;
+    final double iconSize =
+        screenSize.width * 0.18 > 90 ? 90 : screenSize.width * 0.18;
+
+    final IconData iconData =
+        isError ? Icons.close_rounded : Icons.check_rounded;
+
     return Dialog(
       backgroundColor: Colors.transparent,
-      child: Container(
-        width: 320,
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors:
-                isError
-                    ? [Colors.red.shade400, Colors.red.shade700]
-                    : [Colors.blue.shade400, Colors.blue.shade700],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Center(
+        child: Container(
+          width: 320,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1C2431),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.5),
+                blurRadius: 20,
+                spreadRadius: 4,
+              ),
+            ],
           ),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: const [
-            BoxShadow(
-              color: Colors.black26,
-              blurRadius: 10,
-              offset: Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircleAvatar(
-              radius: 30,
-              backgroundColor: Colors.white,
-              child: Icon(
-                isError ? Icons.close : Icons.check,
-                color: isError ? Colors.red : Colors.blue,
-                size: 40,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              isError ? "Failed !" : "Success !",
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              _simplifyMessage(message, isError),
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white70, fontSize: 16),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: () => Navigator.pop(context),
-              icon: Icon(isError ? Icons.refresh : Icons.arrow_forward),
-              label: Text(isError ? "TRY AGAIN" : "CONTINUE"),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: isError ? Colors.red : Colors.blue,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Circle Icon
+              Container(
+                width: iconSize,
+                height: iconSize,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [baseColor.withOpacity(0.2), Colors.transparent],
+                    radius: 0.9,
+                    stops: const [0.3, 1.0],
+                  ),
                 ),
-                padding: const EdgeInsets.symmetric(
-                  vertical: 12,
-                  horizontal: 24,
+                child: Center(
+                  child: Icon(
+                    iconData,
+                    color: baseColor,
+                    size: iconSize * 0.55,
+                  ),
                 ),
-                textStyle: const TextStyle(fontWeight: FontWeight.bold),
               ),
-            ),
-          ],
+              const SizedBox(height: 24),
+
+              // Title
+              Text(
+                isError ? "Error!" : "Success!",
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: textColor,
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              // Message
+              Text(
+                _simplifyMessage(message, isError),
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 14.5, color: Colors.white70),
+              ),
+              const SizedBox(height: 16),
+
+              // Underline
+              Container(
+                margin: const EdgeInsets.only(top: 4),
+                height: 1.5,
+                width: 120,
+                color: textColor.withOpacity(0.4),
+              ),
+              const SizedBox(height: 20),
+
+              // Button
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  style: TextButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: textColor,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    isError ? "Try again" : "Continue",
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -94,13 +127,9 @@ class SuccessFailPopUp extends StatelessWidget {
     String contentToCheck = rawContent.trim();
 
     if (!isError) {
-      debugPrint('>>> RAW RESPONSE: $rawContent');
-
-      // 1. Coba parse JSON dulu
       try {
         final decoded = jsonDecode(rawContent);
         if (decoded is Map) {
-          // Preferensi 1: message field
           if (decoded.containsKey('message')) {
             final msg = decoded['message'].toString().toLowerCase();
             if (msg.contains("deleted") && msg.contains("collection")) {
@@ -111,8 +140,6 @@ class SuccessFailPopUp extends StatelessWidget {
             }
             return decoded['message'];
           }
-
-          // Preferensi 2: stderr field
           if (decoded.containsKey('stderr')) {
             final stderr = decoded['stderr'].toString().toLowerCase();
             if (stderr.contains("successfully pushed")) {
@@ -121,7 +148,6 @@ class SuccessFailPopUp extends StatelessWidget {
           }
         }
       } catch (_) {
-        // Gagal decode JSON? fallback ke plain string
         final msg = contentToCheck.toLowerCase();
         if (msg.contains("deleted") && msg.contains("collection")) {
           return "Collection deleted successfully!";
@@ -130,12 +156,9 @@ class SuccessFailPopUp extends StatelessWidget {
           return "Content block successfully pushed!";
         }
       }
-
       return "Success!";
     }
 
-    // -------------------------
-    // Error section
     try {
       final decoded = jsonDecode(rawContent);
       if (decoded is Map && decoded.containsKey('error')) {
@@ -151,7 +174,7 @@ class SuccessFailPopUp extends StatelessWidget {
       return "Unauthorized access!";
     }
     if (contentToCheck.contains("invalid path")) {
-      return "Invalid Path!";
+      return "Invalid path!";
     }
     if (contentToCheck.contains("not_found") ||
         contentToCheck.contains("collection collectio") ||
