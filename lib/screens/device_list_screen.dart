@@ -3,9 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../config.dart';
 import 'package:intl/intl.dart'; // pastikan sudah import
-import 'package:intl/date_symbol_data_local.dart';
-
-
+// import 'package:intl/date_symbol_data_local.dart';
 
 class DeviceListScreen extends StatefulWidget {
   const DeviceListScreen({super.key});
@@ -26,33 +24,6 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
   void initState() {
     super.initState();
     fetchDevices();
-  }
-
-  Future<void> updateSourceConfig({
-    required String deviceIp,
-    required String sourceName,
-    required int interval,
-    required bool override,
-  }) async {
-    final uri = Uri.parse(
-      AppConfig.updateSourceConfigUrl,
-    ); // pastikan URL ini ada di config.dart
-    final response = await http.post(
-      uri,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'device_ip': deviceIp,
-        'source_name': sourceName,
-        'update_interval': interval,
-        'manual_override': override,
-      }),
-    );
-
-    if (response.statusCode == 200) {
-      _showDialog("Success", "Config updated for $sourceName.");
-    } else {
-      _showDialog("Error", "Failed to update config.");
-    }
   }
 
   Future<void> fetchDevices() async {
@@ -309,13 +280,6 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
                                 ts == 0
                                     ? 'Never'
                                     : "${DateFormat('dd-MM-yyyy • HH:mm', 'id_ID').format(DateTime.fromMillisecondsSinceEpoch(ts * 1000, isUtc: true).add(const Duration(hours: 7)))} WIB";
-                            final intervalController = TextEditingController(
-                              text:
-                                  ((src['update_interval'] ?? 1800) ~/ 60)
-                                      .toString(), // tampilkan dalam menit
-                            );
-
-                            bool overrideFlag = src['manual_override'] ?? false;
 
                             return StatefulBuilder(
                               builder: (context, setLocalState) {
@@ -341,59 +305,6 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
                                           const SizedBox(height: 4),
                                           Text("Last Processed: $tsStr"),
                                           const SizedBox(height: 8),
-                                          Row(
-                                            children: [
-                                              Expanded(
-                                                child: TextField(
-                                                  controller:
-                                                      intervalController,
-                                                  keyboardType:
-                                                      TextInputType.number,
-                                                  decoration: const InputDecoration(
-                                                    labelText:
-                                                        "Update Interval (minutes)",
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 12),
-                                              Column(
-                                                children: [
-                                                  const Text("Manual Override"),
-                                                  Switch(
-                                                    value: overrideFlag,
-                                                    onChanged: (val) {
-                                                      setLocalState(
-                                                        () =>
-                                                            overrideFlag = val,
-                                                      );
-                                                    },
-                                                  ),
-                                                ],
-                                              ),
-                                            ],
-                                          ),
-                                          Align(
-                                            alignment: Alignment.centerRight,
-                                            child: ElevatedButton(
-                                              onPressed: () {
-                                                final parsedMinutes =
-                                                    int.tryParse(
-                                                      intervalController.text,
-                                                    ) ??
-                                                    30;
-                                                updateSourceConfig(
-                                                  deviceIp: device['device_ip'],
-                                                  sourceName:
-                                                      src['source_name'],
-                                                  interval:
-                                                      parsedMinutes *
-                                                      60, // konversi ke detik
-                                                  override: overrideFlag,
-                                                );
-                                              },
-                                              child: const Text("Save"),
-                                            ),
-                                          ),
                                         ],
                                       ),
                                     ),
