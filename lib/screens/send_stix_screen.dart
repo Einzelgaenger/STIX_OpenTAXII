@@ -46,28 +46,33 @@ class _SendStixScreenState extends State<SendStixScreen> {
     final username = _usernameController.text.trim();
     final password = _passwordController.text.trim();
 
-    if (stix.isEmpty)
+    if (stix.isEmpty) {
       return _showCustomDialog(
         "Error",
         "STIX Message is required.",
         isError: true,
       );
-    if (url.isEmpty)
+    }
+    if (url.isEmpty) {
       return _showCustomDialog(
         "Error",
         "Target URL is required.",
         isError: true,
       );
-    if (collection.isEmpty)
+    }
+    if (collection.isEmpty) {
       return _showCustomDialog(
         "Error",
         "Collection Name is required.",
         isError: true,
       );
-    if (username.isEmpty)
+    }
+    if (username.isEmpty) {
       return _showCustomDialog("Error", "Username is required.", isError: true);
-    if (password.isEmpty)
+    }
+    if (password.isEmpty) {
       return _showCustomDialog("Error", "Password is required.", isError: true);
+    }
 
     setState(() => _isLoading = true);
 

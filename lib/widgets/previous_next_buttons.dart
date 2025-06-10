@@ -50,12 +50,12 @@ class _HoverButton extends StatefulWidget {
   final VoidCallback onPressed;
 
   const _HoverButton({
-    Key? key,
+    super.key,
     required this.label,
     required this.icon,
     required this.color,
     required this.onPressed,
-  }) : super(key: key);
+  });
 
   @override
   State<_HoverButton> createState() => _HoverButtonState();
